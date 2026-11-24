@@ -1,16 +1,23 @@
 {
-  "id": "coolcode-tool-template",
-  "title": "CoolCode Tool Starter",
-  "description": "A browser-only example that trims lines and removes exact duplicates.",
+  "id": "abuse-kit",
+  "title": "Abuse Kit",
+  "description": "Find who to report a phishing site, scam domain or abusive IP address to, and draft the report.",
   "category": "security",
-  "tags": ["text", "lines", "duplicates"],
-  "icon": "scan-search",
-  "url": "/coolcode-tool-template/",
-  "source": "https://github.com/jsdyer/coolcode-tool-template",
+  "tags": [
+    "phishing",
+    "abuse reports",
+    "rdap",
+    "asn",
+    "whois",
+    "registrar"
+  ],
+  "icon": "mail",
+  "url": "/abuse-kit/",
+  "source": "https://github.com/jsdyer/abuse-kit",
   "hosting": "project",
   "access": "browser",
   "data_info": {
-    "mode": "local",
-    "detail": "The browser reads the text you paste and compares its lines."
+    "mode": "live",
+    "detail": "Looks up DNS, RDAP registration records and RIPEstat network data from your browser when you search."
   }
 }

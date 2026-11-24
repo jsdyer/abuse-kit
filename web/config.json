@@ -1,0 +1,104 @@
+{
+  "max_addresses_per_target": 4,
+  "bulk_limit": 500,
+  "bulk_concurrency": 4,
+  "ripestat_sourceapp": "coolcode-abuse-kit",
+  "multi_label_suffixes": [
+    "co.uk",
+    "org.uk",
+    "ac.uk",
+    "com.au",
+    "net.au",
+    "org.au",
+    "co.nz",
+    "co.jp",
+    "com.br",
+    "com.mx",
+    "co.za",
+    "co.in",
+    "gc.ca"
+  ],
+  "providers": {
+    "13335": {
+      "name": "Cloudflare",
+      "kind": "cdn",
+      "report": "https://abuse.cloudflare.com/",
+      "note": "Cloudflare is a proxy; it forwards reports to the origin host and can show a phishing warning."
+    },
+    "209242": {
+      "name": "Cloudflare",
+      "kind": "cdn",
+      "report": "https://abuse.cloudflare.com/"
+    },
+    "54113": {
+      "name": "Fastly",
+      "kind": "cdn",
+      "report": "mailto:abuse@fastly.com"
+    },
+    "20940": {
+      "name": "Akamai",
+      "kind": "cdn",
+      "report": "mailto:abuse@akamai.com"
+    },
+    "16625": {
+      "name": "Akamai",
+      "kind": "cdn",
+      "report": "mailto:abuse@akamai.com"
+    },
+    "16509": {
+      "name": "Amazon Web Services",
+      "kind": "cloud",
+      "report": "https://support.aws.amazon.com/#/contacts/report-abuse"
+    },
+    "14618": {
+      "name": "Amazon Web Services",
+      "kind": "cloud",
+      "report": "https://support.aws.amazon.com/#/contacts/report-abuse"
+    },
+    "15169": {
+      "name": "Google",
+      "kind": "cloud",
+      "report": "https://support.google.com/code/contact/cloud_platform_report"
+    },
+    "396982": {
+      "name": "Google Cloud",
+      "kind": "cloud",
+      "report": "https://support.google.com/code/contact/cloud_platform_report"
+    },
+    "8075": {
+      "name": "Microsoft Azure",
+      "kind": "cloud",
+      "report": "https://msrc.microsoft.com/report/abuse"
+    },
+    "14061": {
+      "name": "DigitalOcean",
+      "kind": "cloud",
+      "report": "https://www.digitalocean.com/company/contact/abuse"
+    },
+    "24940": {
+      "name": "Hetzner",
+      "kind": "cloud",
+      "report": "mailto:abuse@hetzner.com"
+    },
+    "16276": {
+      "name": "OVHcloud",
+      "kind": "cloud",
+      "report": "mailto:abuse@ovh.net"
+    },
+    "63949": {
+      "name": "Akamai Connected Cloud (Linode)",
+      "kind": "cloud",
+      "report": "mailto:abuse@linode.com"
+    },
+    "20473": {
+      "name": "Vultr",
+      "kind": "cloud",
+      "report": "mailto:abuse@vultr.com"
+    },
+    "36459": {
+      "name": "GitHub",
+      "kind": "cloud",
+      "report": "https://support.github.com/contact/report-abuse"
+    }
+  }
+}

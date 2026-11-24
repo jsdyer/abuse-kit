@@ -13,22 +13,59 @@
   <a class="skip" href="#main">Skip to content</a>
   <header><a href="https://coolcode.ca/">← CoolCode.ca</a><a href="{{SOURCE_URL}}">Source &amp; instructions ↗</a></header>
   <main id="main">
-    <p class="eyebrow">Browser tool starter</p>
+    <p class="eyebrow">Abuse reporting</p>
     <h1>{{TITLE}}</h1>
     <p class="intro">{{DESCRIPTION}}</p>
-    <section aria-labelledby="example-title">
-      <h2 id="example-title">Clean a list</h2>
-      <p>Trim spaces, skip blank lines and remove exact duplicates. Capitalization stays distinct.</p>
-      <div class="panels">
-        <div><label for="input">Your lines</label><textarea id="input" rows="10" maxlength="100000" spellcheck="false" placeholder="Paste one item per line"></textarea></div>
-        <div><label for="output">Cleaned lines</label><textarea id="output" rows="10" readonly spellcheck="false"></textarea></div>
+
+    <section aria-labelledby="lookup-title">
+      <h2 id="lookup-title">Who do I report this to?</h2>
+      <form id="lookup-form" class="row">
+        <label for="lookup-input" class="visually-hidden">Domain, URL or IP address</label>
+        <input id="lookup-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="phishing.example, https://… or 203.0.113.7">
+        <button type="submit">Look up</button>
+      </form>
+      <p id="lookup-status" role="status" aria-live="polite"></p>
+      <div id="lookup-result" hidden>
+        <h3>Report to</h3>
+        <ol id="contacts" class="contacts"></ol>
+        <h3>Domain</h3>
+        <dl id="domain-facts" class="facts"></dl>
+        <h3>Addresses</h3>
+        <div class="table-wrap"><table id="addresses"><thead><tr><th scope="col">IP</th><th scope="col">Network</th><th scope="col">Prefix</th><th scope="col">Abuse contact</th></tr></thead><tbody></tbody></table></div>
       </div>
-      <div class="actions"><button id="sample" type="button">Load example</button><button id="clear" type="button">Clear</button><button id="copy" type="button" hidden>Copy result</button></div>
-      <p id="status" role="status" aria-live="polite">Paste a list to begin.</p>
-      <noscript><p>This tool needs JavaScript to process your text. The source is available above.</p></noscript>
     </section>
-    <aside aria-label="Privacy"><strong>Stays on your device.</strong> The browser processes your text in this tab. Reloading clears it.</aside>
+
+    <section aria-labelledby="draft-title" id="draft-section" hidden>
+      <h2 id="draft-title">Draft the report</h2>
+      <div class="grid">
+        <div><label for="draft-recipient">Send to</label><select id="draft-recipient"></select></div>
+        <div><label for="draft-kind">Type of abuse</label><select id="draft-kind"></select></div>
+        <div><label for="draft-brand">Brand impersonated (optional)</label><input id="draft-brand" type="text" maxlength="200" autocomplete="off"></div>
+        <div><label for="draft-reporter">Your name</label><input id="draft-reporter" type="text" maxlength="200" autocomplete="name"></div>
+      </div>
+      <label for="draft-evidence">Evidence (optional): what you saw, screenshot or urlscan links, the message that led you there</label>
+      <textarea id="draft-evidence" rows="4" maxlength="20000" spellcheck="true"></textarea>
+      <label for="draft-subject">Subject</label>
+      <input id="draft-subject" type="text" readonly>
+      <label for="draft-body">Message</label>
+      <textarea id="draft-body" rows="16" readonly spellcheck="false"></textarea>
+      <div class="actions"><button id="draft-copy" type="button">Copy message</button><a id="draft-mail" class="button" hidden>Open in email</a></div>
+      <p id="draft-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section aria-labelledby="bulk-title">
+      <h2 id="bulk-title">Bulk IP → network</h2>
+      <p>Paste log lines or a list of addresses. Every IPv4 and IPv6 address is extracted, looked up and grouped by network, with each network's abuse contact.</p>
+      <label for="bulk-input">Log lines or IP addresses</label>
+      <textarea id="bulk-input" rows="8" maxlength="500000" spellcheck="false" placeholder="203.0.113.7 - - [23/Nov/2026:10:00:00] &quot;POST /wp-login.php&quot;"></textarea>
+      <div class="actions"><button id="bulk-run" type="button">Look up addresses</button><button id="bulk-stop" type="button" hidden>Stop</button><a id="bulk-csv" class="button" hidden download="abuse-kit-networks.csv">Download CSV</a></div>
+      <p id="bulk-status" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table id="bulk" hidden><thead><tr><th scope="col">Network</th><th scope="col">Addresses</th><th scope="col">Abuse contact</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <aside aria-label="Privacy"><strong>What leaves your browser.</strong> Domains go to Cloudflare DNS (cloudflare-dns.com) and to rdap.org, which forwards them to the registry. IP addresses go to RIPEstat (stat.ripe.net) and to rdap.org, which forwards them to the regional internet registry. The site itself is never contacted. Your draft, name and evidence stay in this tab and are cleared when you reload.</aside>
+    <noscript><p>This tool needs JavaScript to run lookups.</p></noscript>
   </main>
-  <footer>Part of <a href="https://coolcode.ca/">the CoolCode collection</a>. {{ISSUE_LINK}}</footer>
+  <footer>Part of <a href="https://coolcode.ca/">the CoolCode collection</a>. Network data from <a href="https://stat.ripe.net/">RIPEstat</a> and RDAP. {{ISSUE_LINK}}</footer>
 </body>
 </html>
