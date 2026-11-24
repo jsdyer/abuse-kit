@@ -25,7 +25,8 @@ export function isPublicIP(ip) {
   if (isIPv4(ip)) return isPublicIPv4(ip);
   if (!isIPv6(ip)) return false;
   const lower = ip.toLowerCase();
-  return /^[23]/.test(lower) && !lower.startsWith('2001:db8');
+  const normalized = new URL(`https://[${ip}]/`).hostname.slice(1, -1);
+  return /^[23]/.test(normalized) && !/^2001:(db8|2|10|20):/.test(normalized) && !/^3fff:/.test(normalized);
 }
 
 export function parseInput(input) {
@@ -39,6 +40,7 @@ export function parseInput(input) {
   } catch {
     throw new Error('That is not a valid domain, URL or IP address');
   }
+  if (url.username || url.password) throw new Error('Remove the username or password from the URL');
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Use an http or https URL');
   const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '').toLowerCase();
   if (isIP(host)) return { kind: 'ip', value: host, url: raw.includes('://') ? url.href : null };
@@ -46,25 +48,35 @@ export function parseInput(input) {
   return { kind: 'domain', value: host, url: raw.includes('://') ? url.href : null };
 }
 
-export function registeredDomain(host, suffixes = []) {
-  const labels = host.split('.');
-  if (labels.length >= 3 && suffixes.includes(labels.slice(-2).join('.'))) return labels.slice(-3).join('.');
-  return labels.slice(-2).join('.');
-}
+export { registeredDomain } from './domains.mjs';
 
 export function extractIPs(text, limit) {
-  const found = [];
-  const seen = new Set();
-  const candidates = String(text ?? '').match(/[0-9a-fA-F:.]{7,45}/g) ?? [];
+  const found = [], seen = new Set();
+  // Preserve compressed IPv6 colons; also accept bracketed IPv6 and IPv4:port log entries.
+  const candidates = String(text ?? '').match(/[0-9a-fA-F:.]{2,}/g) ?? [];
   let truncated = false;
-  for (const candidate of candidates) {
-    const ip = candidate.replace(/^[:.]+|[:.]+$/g, '');
-    if (!isIP(ip) || seen.has(ip.toLowerCase())) continue;
+  for (let candidate of candidates) {
+    candidate = candidate.replace(/^\.+|\.+$/g, '');
+    if (!isIP(candidate)) {
+      const withPort = candidate.match(/^(\d+\.\d+\.\d+\.\d+):\d+$/);
+      if (withPort) candidate = withPort[1];
+    }
+    if (!isIP(candidate)) continue;
+    const ip = isIPv6(candidate) ? new URL(`https://[${candidate}]/`).hostname.slice(1, -1) : candidate;
+    if (seen.has(ip)) continue;
     if (found.length >= limit) { truncated = true; break; }
-    seen.add(ip.toLowerCase());
-    found.push(ip.toLowerCase());
+    seen.add(ip); found.push(ip);
   }
   return { ips: found, truncated };
+}
+
+export function selectRecipient(contacts, value) {
+  return /^\d+$/.test(value) ? contacts[Number(value)] ?? null : null;
+}
+
+function safeEmail(value) {
+  const email = String(value ?? '').replace(/^mailto:/i, '');
+  return /^[a-z0-9.!#$%&'*+\/=_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email) ? email : null;
 }
 
 export function parseDoh(data, type) {
@@ -95,7 +107,7 @@ function* entities(list, role) {
 function abuseEmail(list) {
   for (const entity of entities(list, 'abuse')) {
     const email = vcard(entity, 'email');
-    if (email) return email.replace(/^mailto:/i, '');
+    if (safeEmail(email)) return safeEmail(email);
   }
   return null;
 }
@@ -147,7 +159,7 @@ export function ageInDays(iso, now = new Date()) {
   return Number.isFinite(time) ? Math.floor((now - time) / 86_400_000) : null;
 }
 
-// Who to contact, in the order most likely to get a fast result.
+// Group contacts by role; this is not a prediction of response speed.
 export function contacts({ domain, addresses = [], providers = {} }) {
   const list = [];
   const seen = new Set();
@@ -165,7 +177,7 @@ export function contacts({ domain, addresses = [], providers = {} }) {
   }
   if (domain?.registrar) {
     add({ role: 'Registrar', name: domain.registrar, contact: domain.abuse ? `mailto:${domain.abuse}` : null,
-      why: 'Can suspend the domain itself, which stops it everywhere.' });
+      why: 'Can investigate domain registration abuse; a DNS hold is one possible outcome.' });
   }
   for (const address of addresses) {
     const provider = address.asns.map(asn => providerFor(asn, providers)).find(Boolean);
@@ -205,15 +217,16 @@ export function draftReport({ target, kind = 'phishing', brand = '', evidence = 
   }
   if (evidence.trim()) lines.push('', 'Evidence:', ...evidence.trim().split(/\r?\n/).map(line => `  ${line}`));
   lines.push('', recipient?.role === 'Registrar'
-    ? 'Please suspend the domain under your abuse policy.'
-    : 'Please take the content down or suspend the service under your abuse policy.');
+    ? 'Please investigate and, if confirmed, suspend the domain under your abuse policy.'
+    : 'Please investigate and, if confirmed, take appropriate action under your abuse policy.');
   lines.push('', 'Thank you,', reporter.trim() || '[your name]');
   return { subject, body: lines.join('\n') };
 }
 
 export function mailtoLink(recipient, draft) {
   if (!recipient?.contact?.startsWith('mailto:')) return null;
-  const address = recipient.contact.slice('mailto:'.length);
+  const address = safeEmail(recipient.contact);
+  if (!address) return null;
   return `mailto:${address}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
 }
 

@@ -1,12 +1,13 @@
 import {
   parseInput, registeredDomain, extractIPs, parseDoh, parseDomainRdap, parseIpRdap, parseNetworkInfo,
-  parseAsOverview, isPublicIP, contacts, ABUSE_TYPES, draftReport, mailtoLink, groupByAsn, toCsv, ageInDays, providerFor,
+  parseAsOverview, isPublicIP, contacts, ABUSE_TYPES, draftReport, mailtoLink, groupByAsn, toCsv, ageInDays, providerFor, selectRecipient,
 } from './model.mjs';
 
 const $ = selector => document.querySelector(selector);
 let config = null;
 let current = null; // { target, domain, addresses, contacts, observedAt }
 let bulkRun = 0;
+let lookupRun = 0;
 let csvUrl = null;
 
 function el(tag, text, attrs = {}) {
@@ -24,10 +25,14 @@ function fact(list, term, value) {
 const utc = date => date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
 async function getJson(url, accept = 'application/json') {
-  const response = await fetch(url, { headers: { Accept: accept } });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { headers: { Accept: accept }, credentials: 'omit', referrerPolicy: 'no-referrer', signal: controller.signal });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } finally { clearTimeout(timer); }
 }
 
 const stat = (endpoint, resource) =>
@@ -41,17 +46,20 @@ async function holderFor(asn) {
 }
 
 async function describeAddress(ip) {
+  if (!isPublicIP(ip)) return { ip, asns: [], error: 'private or reserved address; not sent for lookup' };
+  const errors = [];
   const [network, rdap] = await Promise.all([
-    getJson(stat('network-info', ip)).then(parseNetworkInfo).catch(() => ({ asns: [], prefix: null })),
-    getJson(`https://rdap.org/ip/${encodeURIComponent(ip)}`, 'application/rdap+json').then(d => (d ? parseIpRdap(d) : {})).catch(() => ({})),
+    getJson(stat('network-info', ip)).then(parseNetworkInfo).catch(() => { errors.push('Network lookup unavailable'); return { asns: [], prefix: null }; }),
+    getJson(`https://rdap.org/ip/${encodeURIComponent(ip)}`, 'application/rdap+json').then(d => (d ? parseIpRdap(d) : {})).catch(() => { errors.push('RDAP unavailable'); return {}; }),
   ]);
-  return { ip, ...network, ...rdap, holder: await holderFor(network.asns[0]) };
+  return { ip, ...network, ...rdap, holder: await holderFor(network.asns[0]), error: errors.join('; ') || null };
 }
 
 async function describeDomain(host) {
   const dns = type => getJson(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=${type}`, 'application/dns-json')
     .then(d => parseDoh(d, type));
-  const domain = registeredDomain(host, config.multi_label_suffixes);
+  const domain = registeredDomain(host);
+  if (!domain) throw new Error('Enter a registered domain, not a public suffix');
   const [a, aaaa, rdap] = await Promise.all([
     dns('A'), dns('AAAA'),
     getJson(`https://rdap.org/domain/${encodeURIComponent(domain)}`, 'application/rdap+json').then(d => (d ? parseDomainRdap(d) : null)).catch(() => undefined),
@@ -101,7 +109,7 @@ function renderLookup() {
     const provider = address.asns.map(asn => providerFor(asn, config.providers)).find(Boolean);
     const network = `${address.asns.length ? `AS${address.asns.join(', AS')} ` : ''}${address.holder ?? address.organization ?? address.network ?? ''}${provider ? ` · ${provider.kind === 'cdn' ? 'CDN' : 'cloud'}` : ''}`;
     const tr = el('tr');
-    tr.append(el('td', address.ip), el('td', network.trim() || '—'), el('td', address.prefix ?? '—'), el('td', address.abuse ?? '—'));
+    tr.append(el('td', address.ip), el('td', network.trim() || '—'), el('td', address.prefix ?? '—'), el('td', address.error || address.abuse || '—'));
     body.append(tr);
   }
   $('#addresses').hidden = !addresses.length;
@@ -117,7 +125,7 @@ function renderLookup() {
 
 function renderDraft() {
   if (!current) return;
-  const recipient = current.contacts[Number($('#draft-recipient').value)] ?? null;
+  const recipient = selectRecipient(current.contacts, $('#draft-recipient').value);
   const draft = draftReport({
     target: current.target, kind: $('#draft-kind').value, brand: $('#draft-brand').value, evidence: $('#draft-evidence').value,
     reporter: $('#draft-reporter').value, observedAt: current.observedAt, domain: current.domain?.rdap ?? null,
@@ -133,6 +141,8 @@ function renderDraft() {
 
 async function lookup(event) {
   event.preventDefault();
+  const run = ++lookupRun;
+  if (!config) return;
   const status = $('#lookup-status');
   let target;
   try {
@@ -155,17 +165,21 @@ async function lookup(event) {
       ips = [target.value];
     }
     const addresses = await Promise.all(ips.map(describeAddress));
+    if (run !== lookupRun) return;
     current = { target, domain, addresses, observedAt,
       contacts: contacts({ domain: domain?.rdap, addresses, providers: config.providers }) };
     renderLookup();
     const note = target.kind === 'domain' && domain.rcode === 'NXDOMAIN' ? ' The domain does not resolve right now.' : '';
-    status.textContent = `Looked up ${target.value} at ${observedAt}.${note}`;
+    const partial = addresses.some(a => a.error) ? ' Some network/contact lookups were unavailable or skipped; see the table.' : '';
+    status.textContent = `Looked up ${target.value} at ${observedAt}.${note}${partial}`;
   } catch {
+    if (run !== lookupRun) return;
     status.textContent = 'The lookup failed. Your network or a browser extension may be blocking it; try again.';
   }
 }
 
 async function bulk() {
+  if (!config) return;
   const run = ++bulkRun;
   const status = $('#bulk-status');
   const { ips, truncated } = extractIPs($('#bulk-input').value, config.bulk_limit);
@@ -198,7 +212,7 @@ async function bulk() {
   }
   $('#bulk').hidden = !groups.length;
   const skipped = rows.filter(r => !r.asns.length).length;
-  status.textContent = `${rows.length} ${rows.length === 1 ? 'address' : 'addresses'} in ${groups.length} ${groups.length === 1 ? 'network' : 'networks'}${skipped ? `; ${skipped} private, reserved or unrouted` : ''}${truncated ? `. Only the first ${config.bulk_limit} addresses were looked up` : ''}${run !== bulkRun ? ' (stopped early)' : ''}.`;
+  status.textContent = `${rows.length} ${rows.length === 1 ? 'address' : 'addresses'} in ${groups.length} ${groups.length === 1 ? 'network' : 'networks'}${skipped ? `; ${skipped} skipped, unavailable or without a network match` : ''}${truncated ? `. Only the first ${config.bulk_limit} addresses were looked up` : ''}${run !== bulkRun ? ' (stopped early)' : ''}.`;
   if (csvUrl) URL.revokeObjectURL(csvUrl);
   csvUrl = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv' }));
   $('#bulk-csv').setAttribute('href', csvUrl);
@@ -225,6 +239,8 @@ try {
   const response = await fetch('./config.json');
   if (!response.ok) throw new Error(String(response.status));
   config = await response.json();
+  $('#lookup-form button').disabled = false;
+  $('#bulk-run').disabled = false;
 } catch {
   $('#lookup-status').textContent = 'The tool settings could not be loaded. Reload the page.';
   $('#lookup-form button').disabled = true;

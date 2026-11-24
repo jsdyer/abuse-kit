@@ -118,3 +118,29 @@ test('domain age', () => {
   assert.equal(ageInDays('2026-11-01T00:00:00Z', new Date('2026-11-24T00:00:00Z')), 23);
   assert.equal(ageInDays(null), null);
 });
+
+
+test('compressed IPv6, loopback and address ports are preserved and canonicalized', () => {
+  assert.deepEqual(extractIPs('[2001:4860::8888]:443 ::1 1.1.1.1:53 2001:4860:0:0:0:0:0:8888', 20).ips,
+    ['2001:4860::8888', '::1', '1.1.1.1']);
+  assert.equal(isPublicIP('2001:db8::1'), false);
+  assert.equal(isPublicIP('::1'), false);
+});
+
+test('registration boundaries handle ICANN wildcard and exception rules', () => {
+  assert.equal(registeredDomain('a.b.example.co.za'), 'example.co.za');
+  assert.equal(registeredDomain('a.city.kawasaki.jp'), 'city.kawasaki.jp');
+  assert.equal(registeredDomain('a.b.kawasaki.jp'), 'a.b.kawasaki.jp');
+  assert.equal(registeredDomain('co.uk'), null);
+});
+
+test('someone else does not silently select the first contact', async () => {
+  const {selectRecipient} = await import('../web/model.mjs');
+  assert.equal(selectRecipient([{name:'First'}], ''), null);
+  assert.equal(selectRecipient([{name:'First'}], '0').name, 'First');
+});
+
+test('rejects credentials in pasted URLs and header injection in contacts', () => {
+  assert.throws(() => parseInput('https://user:secret@example.com/'), /password/);
+  assert.equal(mailtoLink({contact:'mailto:abuse@example.com?bcc=elsewhere@example.com'}, {subject:'x',body:'x'}), null);
+});

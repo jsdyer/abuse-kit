@@ -22,7 +22,7 @@
       <form id="lookup-form" class="row">
         <label for="lookup-input" class="visually-hidden">Domain, URL or IP address</label>
         <input id="lookup-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="phishing.example, https://… or 203.0.113.7">
-        <button type="submit">Look up</button>
+        <button type="submit" disabled>Look up</button>
       </form>
       <p id="lookup-status" role="status" aria-live="polite"></p>
       <div id="lookup-result" hidden>
@@ -58,7 +58,7 @@
       <p>Paste log lines or a list of addresses. Every IPv4 and IPv6 address is extracted, looked up and grouped by network, with each network's abuse contact.</p>
       <label for="bulk-input">Log lines or IP addresses</label>
       <textarea id="bulk-input" rows="8" maxlength="500000" spellcheck="false" placeholder="203.0.113.7 - - [23/Nov/2026:10:00:00] &quot;POST /wp-login.php&quot;"></textarea>
-      <div class="actions"><button id="bulk-run" type="button">Look up addresses</button><button id="bulk-stop" type="button" hidden>Stop</button><a id="bulk-csv" class="button" hidden download="abuse-kit-networks.csv">Download CSV</a></div>
+      <div class="actions"><button id="bulk-run" disabled type="button">Look up addresses</button><button id="bulk-stop" type="button" hidden>Stop</button><a id="bulk-csv" class="button" hidden download="abuse-kit-networks.csv">Download CSV</a></div>
       <p id="bulk-status" role="status" aria-live="polite"></p>
       <div class="table-wrap"><table id="bulk" hidden><thead><tr><th scope="col">Network</th><th scope="col">Addresses</th><th scope="col">Abuse contact</th></tr></thead><tbody></tbody></table></div>
     </section>

@@ -7,7 +7,7 @@ Published at `coolcode.ca/abuse-kit/`.
 ## Using the tool
 
 <!-- coolcode:guide -->
-Enter a domain, URL or IP address. The tool lists who to contact in the order most likely to get a fast result: a CDN such as Cloudflare first (it sits in front of the real host), then the registrar (it can suspend the domain everywhere), then hosting companies and each network's registry abuse contact. Pick a recipient to fill in a ready-to-send report with the registrar's IANA ID, IP addresses, networks and a UTC timestamp. The site itself is never contacted.
+Enter a domain, URL or public IP to find CDN, registrar and network abuse contacts and build an editable report. Contact order is a useful starting point, not a guarantee of responsibility or response speed; a CDN may conceal the origin host. “Someone else” clears the suggested recipient. Bulk mode extracts IPv4 and IPv6 from logs, skips private/reserved addresses, and exports network/contact results plus lookup failures as CSV. Nothing is sent as a report automatically, and the suspect site is never contacted.
 <!-- /coolcode:guide -->
 
 **Bulk IP → network** takes pasted log lines or a list of addresses, extracts
@@ -39,7 +39,6 @@ Everything tunable is in `web/config.json`:
 | `bulk_limit` | `500` | Most addresses looked up in one bulk run |
 | `bulk_concurrency` | `4` | Parallel lookups in bulk mode (keep low to be polite to RIPEstat) |
 | `ripestat_sourceapp` | `coolcode-abuse-kit` | Identifies the tool to RIPEstat |
-| `multi_label_suffixes` | `co.uk`, `com.au`, … | Zones where domains are registered one level deeper |
 | `providers` | Cloudflare, AWS, Google, … | Networks with their own report page, keyed by ASN |
 
 To add a provider, add an entry keyed by its ASN (digits only):
@@ -76,3 +75,20 @@ python3 -m http.server 8000 --directory dist
 | `web/model.mjs` | Parsing, contact ordering, report drafting, CSV |
 | `web/app.mjs` | Lookups and DOM |
 | `tool.json` | Catalogue record for coolcode.ca |
+
+## Collection maintenance
+
+The catalogue, imported README guide, repository audit, sitemap, Cloudflare
+visitor registry and Linux refresh watchdog are managed in
+[jsdyer/jsdyer.github.io](https://github.com/jsdyer/jsdyer.github.io).
+Follow its [tool lifecycle checklist](https://github.com/jsdyer/jsdyer.github.io/blob/main/docs/tool-lifecycle.md)
+when changing this tool's identity, source, deployment, inputs or refresh schedule.
+The independent scheduler must actually be installed on the Linux server; a
+GitHub schedule guard alone cannot guarantee refreshes continue.
+
+Registration boundaries use a vendored ICANN Public Suffix List with wildcard
+and exception rules. RDAP is queried for the registrable parent, not a private
+hosting tenant. Update it with `python3 scripts/update_suffixes.py`, run tests,
+then commit `web/vendor/public-suffixes.json`; provenance is in
+`web/vendor/README.md`. No scheduled collector or watchdog dispatch is needed:
+lookups run only when a visitor requests them.

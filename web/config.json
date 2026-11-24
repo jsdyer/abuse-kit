@@ -3,21 +3,6 @@
   "bulk_limit": 500,
   "bulk_concurrency": 4,
   "ripestat_sourceapp": "coolcode-abuse-kit",
-  "multi_label_suffixes": [
-    "co.uk",
-    "org.uk",
-    "ac.uk",
-    "com.au",
-    "net.au",
-    "org.au",
-    "co.nz",
-    "co.jp",
-    "com.br",
-    "com.mx",
-    "co.za",
-    "co.in",
-    "gc.ca"
-  ],
   "providers": {
     "13335": {
       "name": "Cloudflare",
